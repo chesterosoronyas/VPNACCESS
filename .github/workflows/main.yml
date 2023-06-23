@@ -1,0 +1,29 @@
+# .github/workflows/vpn.yml
+name: Can I use openconnect / fortinet on Github Actions?
+on: push
+
+jobs:
+ openconnect:
+   name: Build, install and run openconnect / fortinet
+   runs-on: ubuntu-latest
+   steps:
+     - name: Setup build environment
+       run: |
+         sudo apt update && sudo apt install -y git autotools-dev automake libtool pkg-config m4 gettext openssl libssl-dev libxml2-dev vpnc-scripts
+     - name: Build OpenConnect from source
+       run: |
+         git clone https://gitlab.com/openconnect/openconnect.git
+         cd openconnect
+         git checkout v9.01
+         ./autogen.sh
+         ./version.sh version.c
+         ./configure
+         make -j$(nproc)
+         sudo make install
+         sudo ldconfig
+     - name: Connect to VPN
+       run: |
+         echo "${{ secrets.VPN_PWD }}" | sudo openconnect -u ${{ secrets.VPN_USER }} --passwd-on-stdin --protocol=fortinet ${{ secrets.VPN_HOST }} &
+     - name: Test if connected to VPN
+       run: |
+         ping -c4 ${{ secrets.SERVER_HOST_INSIDE_VPN }}
